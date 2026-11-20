@@ -11,7 +11,7 @@
 // Outside the grader's container, MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR stand in for /bot and /output:
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
@@ -24,3 +24,19 @@ try {
   console.error(`POST.json could not be copied from ${BOT_DIR}: ${(err as Error).message}`);
   process.exit(1);
 }
+
+// Validate the copied POST.json so a placeholder entry fails here, loudly,
+// instead of reaching the gate: the starter ships a placeholder address
+// (<handle>/<id>) that the gate refuses, so refuse it ourselves first.
+let postUrl: string;
+try {
+  postUrl = (JSON.parse(readFileSync(join(OUTPUT_DIR, 'POST.json'), 'utf8')) as { url?: unknown }).url as string;
+} catch {
+  console.error('POST.json is not valid JSON.');
+  process.exit(1);
+}
+if (typeof postUrl !== 'string' || postUrl.includes('<') || !postUrl.startsWith('https://')) {
+  console.error(`POST.json does not name a real post URL: ${postUrl}`);
+  process.exit(1);
+}
+console.log(`Entry post: ${postUrl}`);
